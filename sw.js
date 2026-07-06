@@ -1,4 +1,4 @@
-const CACHE_NAME = 'catos-v2'; 
+const CACHE_NAME = 'catos-v2';
 
 const ASSETS = [
   './', 
