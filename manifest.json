@@ -1,7 +1,6 @@
-
   {
   "name": "KittenOS",
-  "short_name": "CatOS",
+  "short_name": "KittenOS",
   "start_url": "./index.html",
   "display": "fullscreen",
   "orientation": "any",
