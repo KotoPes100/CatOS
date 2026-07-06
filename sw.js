@@ -1,17 +1,62 @@
-const CACHE_NAME = 'catos';
+const CACHE_NAME = 'catos-v2'; 
+
 const ASSETS = [
   './', 
-  './index.html'
+  './index.html',
+  './library/eruda.js',
+  './library/lightning-fs.min.js',
+  './apps/files.html',
+  './apps/gallery.html',
+  './apps/camera.html',
+  './apps/browser.html',
+  './apps/calculator.html',
+  './apps/list.html',
+  "./apps/cat's maps.html", 
+  './apps/search.html'
+  './apps/weather.html'
 ];
 
+// Service Worker installation 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting())
+  );
 });
 
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            console.log('Удален старый кэш CatOS:', cache);
+            return caches.delete(cache);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
+});
+
+// Network-First
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request);
+      })
   );
 });
