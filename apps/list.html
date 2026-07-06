@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Cat's list</title>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzgwIiB2ZXJzaW9uPSIxLjAiPg0KICA8cGF0aCBkPSJNIDE1MS4zNDkwNCwzMDcuMjA0NTUgTCAyNjQuMzQ5MDQsMzA3LjIwNDU1IEMgMjY0LjM0OTA0LDI5MS4xNDA5NiAyNjMuMjAyMSwyODcuOTU0NTUgMjM2LjU5OTA0LDI4Ny45NTQ1NSBDIDI0MC44NDkwNCwyNzUuMjA0NTUgMjU4LjEyNDI0LDI0NC4zNTgwOCAyNjcuNzI0MDQsMjQ0LjM1ODA4IEMgMjc2LjIxNzA3LDI0NC4zNTgwOCAyODYuMzQ5MDQsMjQ0LjgyNTkyIDI4Ni4zNDkwNCwyNjQuMjA0NTUgQyAyODYuMzQ5MDQsMjg2LjIwNDU1IDMyMy4zNzE3MSwzMjEuNjc1NDcgMzMyLjM0OTA0LDMwNy4yMDQ1NSBDIDM0NS43Mjc2OSwyODUuNjM4OTcgMzA5LjM0OTA0LDI5Mi4yMTUxNCAzMDkuMzQ5MDQsMjQwLjIwNDU1IEMgMzA5LjM0OTA0LDE2OS4wNTEzNSAzNTAuODc0MTcsMTc5LjE4MDcxIDM1MC44NzQxNywxMzkuMjA0NTUgQyAzNTAuODc0MTcsMTE5LjIwNDU1IDM0NS4zNDkwNCwxMTYuNTAzNzQgMzQ1LjM0OTA0LDEwMi4yMDQ1NSBDIDM0NS4zNDkwNCw4My4zMDY5NSAzNjEuOTk3MTcsODQuNDAzNTc3IDM1OC43NTgwNSw2OC43MzQ4NzkgQyAzNTYuNTIwNjEsNTcuOTExNjU2IDM1NC43Njk2Miw0OS4yMzE5OSAzNTMuNDY1MTYsMzYuMTQzODg5IEMgMzUyLjUzOTU5LDI2Ljg1NzMwNSAzNTIuMjQ0NTIsMTYuOTU5Mzk4IDM0Mi41OTg1NSwxNy4zNTczODIgQyAzMzEuMjY1MDUsMTcuODI0OTkyIDMyNi45NjU0OSwzNy43NzQxOSAzMDkuMzQ5MDQsMzkuMjA0NTQ5IEMgMjkxLjc2ODUxLDQwLjYzMTk5MSAyNzYuNzc4MzQsMjQuMjM4MDI4IDI2OS45NzQwNCwyNi41Nzk1NDkgQyAyNjMuMjI3MDksMjguOTAxMzM0IDI2NS4zNDkwNCw0Ny4yMDQ1NDkgMjY5LjM0OTA0LDYwLjIwNDU0OSBDIDI3NS42MzU4OCw4MC42MzY3NzEgMjg5LjM0OTA0LDEwNy4yMDQ1NSAyNjQuMzQ5MDQsMTExLjIwNDU1IEMgMjM5LjM0OTA0LDExNS4yMDQ1NSAxOTYuMzQ5MDQsMTE5LjIwNDU1IDE2NS4zNDkwNCwxNjAuMjA0NTUgQyAxMzQuMzQ5MDQsMjAxLjIwNDU1IDEzNS40OTM0MiwyNDkuMzIxMiAxMjMuMzQ5MDQsMjY0LjIwNDU1IEMgODIuNTkwNjk2LDMxNC4xNTUyOSA0MC44MjM5MTksMjkzLjY0NjI1IDQwLjgyMzkxOSwzMzUuMjA0NTUgQyA0MC44MjM5MTksMzUzLjgxMDE5IDcyLjM0OTA0NSwzNjcuMjA0NTUgNzcuMzQ5MDQ1LDM2MS4yMDQ1NSBDIDgyLjM0OTA0NSwzNTUuMjA0NTUgMzQuODYzNzY0LDMzNy4zMjU4NyA4Ny45OTU0OTIsMzE2LjIwNDU1IEMgMTMzLjM4NzExLDI5OC4xNjAxNCAxMzcuNDM5MTQsMjk0LjQ3NjYzIDE1MS4zNDkwNCwzMDcuMjA0NTUgeiINCiAgICAgICAgc3R5bGU9ImZpbGw6ZGVlcHNreWJsdWU7ZmlsbC1vcGFjaXR5OjE7ZmlsbC1ydWxlOmV2ZW5vZGQ7c3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjFweDtzdHJva2UtbGluZWNhcDpidXR0O3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2Utb3BhY2l0eToxIi8+DQo8L3N2Zz4=" type="image/svg+xml">  
+<style>
+body {
+    background: #0fc;
+    padding: 10px 30px;
+    font-size: 20px;
+    font-family: sans-serif;
+    touch-action: none; /* чтобы не мешало перетаскиванию */
+  }
+  .deleteButton {
+    background: linear-gradient(to bottom, gold, red);
+    border-color: orange;
+  }
+  .deleteButton:hover{ background: linear-gradient(to bottom, red, gold); }
+  button {
+    color: #000;
+    cursor: pointer;
+    touch-action: none;
+    background: linear-gradient(to bottom, lime, green);
+    border: 1px solid lime;
+    border-radius: 2.5px;
+    padding: 2.5px 10px;
+    font-size: 16px;
+  }
+  button:hover {background: linear-gradient(to bottom, green, lime);}
+  input {
+    outline: none !important;
+    color: #00f;
+    font-weight: bold;
+    font-size: 16px;
+  }
+  input[type="checkbox"] {
+    accent-color: #008;
+    width: 18px;
+    height: 18px;
+  }
+  .dragging {
+    background: #069;
+    color: #fff;
+    border-radius: 4px;
+  }
+  #resultsDiv{
+  background: #067;
+  color: white;
+  padding: 0px 30px;
+  border-radius: 2px;
+}
+.light {
+accent-color: #0a1 !important;
+}
+b{
+color: #0a1;
+text-decoration: underline;
+}
+</style>
+</head>
+
+<body>
+<div style="position: fixed; top: 0; background: #0fc; z-index: 100;"><br>
+<input id="newItemInp" type="text">
+<button onclick="add()">Add</button>
+<button onclick="toggleTick()">Show chosen</button>
+<button onclick="clearList()" class="deleteButton">Clear list</button>
+</div>
+<div style="position: absolute; top: 30px; z-index: 50;">
+<ul id="resultsDiv"></ul>
+<ul id="list" <!style="display: flex;">></ul>
+</div>
+<script>
+let items = [];
+let dragEl = null;
+let dragIndex = null;
+let showChosenOnly = false;
+
+/* Storage */
+
+function getList() {
+  return JSON.parse(localStorage.getItem("list") || "[]");
+}
+
+function saveList() {
+  localStorage.setItem("list", JSON.stringify(items));
+}
+
+/* Add */
+
+function add() {
+  const inp = document.getElementById("newItemInp");
+  const value = inp.value.trim();
+  if (!value) return;
+
+  items.push({ value, need: true });
+  inp.value = "";
+  renderList();
+  saveList();
+  const query= document.getElementById("newItemInp").value;
+searchAndLog(query);
+}
+
+/* Render */
+
+function renderList() {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+
+  const filtered = showChosenOnly
+    ? items.filter(i => i.need)
+    : items;
+
+  filtered.forEach(item => {
+    const index = items.indexOf(item);
+    const div = document.createElement("div");
+
+    div.innerHTML = `
+      <span class="handle" style="cursor:grab">≡    </span>
+      <span class="text">${item.value}</span>
+      <input type="checkbox" ${item.need ? "checked" : ""}>
+      <button class="edit">✏️</button>
+      <button class="delete deleteButton">🗑</button>
+    `;
+
+    div.querySelector("input").onchange =
+      () => toggleItem(index);
+
+    div.querySelector(".delete").onclick =
+      () => deleteItem(index);
+
+    div.querySelector(".edit").onclick =
+      () => editItem(index, div);
+
+    div.addEventListener("mousedown", startDrag);
+    div.addEventListener("touchstart", startTouch, { passive:false });
+
+    list.appendChild(div);
+  });
+
+  saveList();
+}
+
+/* Edit */
+
+function editItem(index, div) {
+  const span = div.querySelector(".text");
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = items[index].value;
+
+  span.replaceWith(input);
+  input.focus();
+
+  function save() {
+    const val = input.value.trim();
+    if (val) items[index].value = val;
+    renderList();
+  }
+
+  input.addEventListener("blur", save);
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") input.blur();
+  });
+}
+
+/* Toggle / Delete */
+
+function toggleItem(i) {
+  items[i].need = !items[i].need;
+  renderList();
+}
+
+function deleteItem(i) {
+  items.splice(i, 1);
+  renderList();
+}
+
+function clearList() {
+  if (confirm("Clear the list?")) {
+    items = [];
+    renderList();
+  }
+}
+
+function toggleTick() {
+  showChosenOnly = !showChosenOnly;
+  renderList();
+}
+
+/* ---------- DRAG (mouse + touch) ---------- */
+
+function startDrag(e) {
+  if (!e.target.classList.contains("handle")) return;
+
+  dragEl = e.currentTarget;
+  dragIndex = [...dragEl.parentNode.children].indexOf(dragEl);
+  dragEl.classList.add("dragging");
+
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", endDrag);
+}
+
+function startTouch(e) {
+  if (!e.target.classList.contains("handle")) return;
+
+  e.preventDefault();
+  dragEl = e.currentTarget;
+  dragIndex = [...dragEl.parentNode.children].indexOf(dragEl);
+  dragEl.classList.add("dragging");
+
+  document.addEventListener("touchmove", onMove, { passive:false });
+  document.addEventListener("touchend", endDrag);
+}
+
+function onMove(e) {
+  if (!dragEl) return;
+
+  if (e.touches) e.preventDefault();
+
+  const y = e.touches ? e.touches[0].clientY : e.clientY;
+  const list = dragEl.parentNode;
+  const itemsDOM = [...list.children];
+
+  for (let el of itemsDOM) {
+    if (el === dragEl) continue;
+
+    const rect = el.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+
+    if (y < mid) {
+      list.insertBefore(dragEl, el);
+      return;
+    }
+  }
+
+  list.appendChild(dragEl);
+}
+
+function endDrag() {
+  if (!dragEl) return;
+
+  const list = dragEl.parentNode;
+  const newIndex = [...list.children].indexOf(dragEl);
+
+  if (newIndex !== dragIndex) {
+    const moved = items.splice(dragIndex, 1)[0];
+    items.splice(newIndex, 0, moved);
+  }
+
+  dragEl.classList.remove("dragging");
+  dragEl = null;
+
+  document.removeEventListener("mousemove", onMove);
+  document.removeEventListener("mouseup", endDrag);
+  document.removeEventListener("touchmove", onMove);
+  document.removeEventListener("touchend", endDrag);
+
+  renderList();
+}
+
+function renderResults(results) {
+if (results.length === 0) return;
+  const list = document.getElementById("resultsDiv");
+  list.innerHTML = "<b>Your items with these letters:</b><br>";
+
+  results.forEach(item => {
+    const index = items.indexOf(item);
+    const div = document.createElement("div");
+
+    div.innerHTML = `
+      <span class="text">${item.value}</span>
+      <input class="light" type="checkbox" ${item.need ? "checked" : ""}>
+    `;
+
+    // чтобы галка работала
+    div.querySelector("input").onchange =
+      () => toggleItem(index);
+
+    list.appendChild(div);
+  });
+}
+
+/* Init */
+
+items = getList();
+renderList();
+
+document
+  .getElementById("newItemInp")
+  .addEventListener("keydown", e => {
+    if (e.key === "Enter") add();
+  });
+  
+  function searchAndLog(query) {
+  const q = query.trim().toLowerCase();
+
+  const results = items.filter(item =>
+    item.value.toLowerCase().includes(q)
+  );
+if (q) {
+  renderResults(results);
+  }else{
+document.getElementById("resultsDiv").innerHTML="";
+}
+}
+document.getElementById("newItemInp").addEventListener("input", e =>{
+const query= document.getElementById("newItemInp").value;
+searchAndLog(query);
+})
+</script>
+
+</body>
+</html>

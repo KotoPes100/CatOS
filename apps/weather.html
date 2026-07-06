@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: "Segoe UI", sans-serif;
+      color: deepskyblue;
+      font-weight: bold;
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .weather-card {
+      backdrop-filter: blur(12px) saturate(120%);
+      -webkit-backdrop-filter: blur(12px) saturate(120%);
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+
+    .search-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    input, button {
+      backdrop-filter: blur(3px) saturate(110%) !important;
+      -webkit-backdrop-filter: blur(3px) saturate(110%) !important;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-bottom: 0.67px solid rgba(255, 255, 255, 0.25); border-top: 0.67px solid rgba(255, 255, 255, 0.25);
+      color: #6f7;
+      padding: 10px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: bold;
+      outline: none;
+    }
+
+    input {
+      flex: 1;
+    }
+
+    input::placeholder {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    button {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    button:active {
+      transform: scale(0.95);
+    }
+
+    #geoBtn {
+      padding: 10px;
+      aspect-ratio: 1;
+    }
+
+    .location {
+      font-size: 22px;
+      margin: 10px 0 5px 0;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    /* Контейнер для динамической иконки */
+    .weather-icon-container {
+      font-size: 64px;
+      line-height: 1;
+      margin: 15px 0;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+    }
+
+    .temp {
+      font-size: 54px;
+      font-weight: 300;
+      margin: 10px 0;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .description {
+      font-size: 16px;
+      text-transform: capitalize;
+      margin-bottom: 20px;
+      opacity: 0.9;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      padding-top: 15px;
+    }
+
+    .info-item {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+
+    .info-value {
+      font-size: 14px;
+      font-weight: bold;
+      opacity: 1;
+      margin-top: 4px;
+    }
+
+    .error-msg {
+      color: #ff453a;
+      font-size: 14px;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="weather-card">
+    <div class="search-box">
+      <button id="geoBtn" title="Detect my location">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="7"></circle>
+          <line x1="12" y1="1" x2="12" y2="4"></line>
+          <line x1="12" y1="20" x2="12" y2="23"></line>
+          <line x1="1" y1="12" x2="4" y2="12"></line>
+          <line x1="20" y1="12" x2="23" y2="12"></line>
+        </svg>
+      </button>
+      <input type="text" id="cityInput" placeholder="Search for a city..." value="Saint Petersburg">
+      <button id="searchBtn">GO</button>
+    </div>
+
+    <div id="weatherData">
+      <div class="location" id="cityName">Loading...</div>
+      
+      <div class="weather-icon-container" id="weatherIcon">☀️</div>
+      
+      <div class="temp" id="temperature">--°C</div>
+      <div class="description" id="weatherDesc">---</div>
+
+      <div class="info-grid">
+        <div class="info-item">Wind Speed<div class="info-value" id="wind">-- m/s</div></div>
+        <div class="info-item">Wind Dir<div class="info-value" id="windDir">--</div></div>
+        <div class="info-item">Humidity<div class="info-value" id="humidity">--%</div></div>
+      </div>
+    </div>
+    
+    <div class="error-msg" id="errorBlock">City not found</div>
+  </div>
+
+  <script>
+    // Массив сопоставления: Код WMO -> [Текст, Эмодзи-иконка]
+    const weatherMapping = {
+      0: { text: "Clear", icon: "☀️" },
+      1: { text: "Mostly clear", icon: "🌤️" },
+      2: { text: "Partly cloudy", icon: "⛅" },
+      3: { text: "Overcast", icon: "☁️" },
+      45: { text: "Fog", icon: "🌫️" },
+      48: { text: "Rime fog", icon: "🌫️" },
+      51: { text: "Light drizzle", icon: "🌦️" },
+      53: { text: "Moderate drizzle", icon: "🌧️" },
+      55: { text: "Dense drizzle", icon: "🌧️" },
+      61: { text: "Light rain", icon: "💧" },
+      63: { text: "Moderate rain", icon: "🌧️" },
+      65: { text: "Heavy rain", icon: "🌧️" },
+      71: { text: "Light snowfall", icon: "🌨️" },
+      73: { text: "Moderate snowfall", icon: "❄️" },
+      75: { text: "Heavy snowfall", icon: "☃️" },
+      80: { text: "Light downpour", icon: "🌦️" },
+      81: { text: "Moderate downpour", icon: "🌧️" },
+      82: { text: "Heavy downpour", icon: "⛈️" },
+      95: { text: "Thunderstorm", icon: "🌩️" },
+      96: { text: "Thunderstorm with hail", icon: "⛈️" }
+    };
+
+    const cityInput = document.getElementById('cityInput');
+    const searchBtn = document.getElementById('searchBtn');
+    const geoBtn = document.getElementById('geoBtn');
+    const errorBlock = document.getElementById('errorBlock');
+
+    function getWindDirectionText(degree) {
+      const sectors = ["N ↑", "NE ↗", "E →", "SE ↘", "S ↓", "SW ↙", "W ←", "NW ↖"];
+      const index = Math.round(degree / 45) % 8;
+      return sectors[index];
+    }
+
+// 1. НАДЕЖНЫЙ ПОИСК НА ЛЮБОМ ЯЗЫКЕ ЧЕРЕЗ OPENSTREETMAP
+async function getWeather(cityName) {
+  if (!cityName.trim()) return;
+  errorBlock.style.display = "none";
+  try {
+    // Используем OpenStreetMap (Nominatim). Параметр accept-language не передаем, 
+    // чтобы сервер автоматически подстраивался под язык ввода.
+    const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(cityName)}&format=json&limit=1`;
+    
+    // Номинатим требует обязательный заголовок User-Agent, чтобы не блокировать запросы
+    const geoRes = await fetch(geoUrl, {
+      headers: { 'User-Agent': 'LakeOS-Weather-App' }
+    });
+    const geoData = await geoRes.json();
+
+    if (!geoData || geoData.length === 0) {
+      showError();
+      return;
+    }
+
+    const city = geoData[0];
+    
+    // ЛОГИКА ВЫБОРА НАЗВАНИЯ:
+    // По умолчанию берем то, что ввел пользователь, сделав первую букву заглавной
+    let displayName = cityName.trim().charAt(0).toUpperCase() + cityName.trim().slice(1);
+    
+    // Если нужно, чтобы выводилось строго английское название, когда это возможно,
+    // у OpenStreetMap в объекте city иногда есть свойство name или его можно вытащить.
+    // Но самый надежный способ сохранить язык ввода — использовать преобразованный displayName.
+
+    // Отправляем точные координаты (lat и lon) на сервер погоды Open-Meteo
+    fetchWeatherData(parseFloat(city.lat), parseFloat(city.lon), displayName);
+  } catch (err) {
+    console.error(err);
+    showError();
+  }
+}
+
+
+// 2. ИСПРАВЛЕННОЕ ОТОБРАЖЕНИЕ ОШИБКИ (очищает ВСЕ поля, чтобы не путать)
+function showError() {
+  errorBlock.style.display = "block";
+  document.getElementById('cityName').textContent = "---";
+  document.getElementById('temperature').textContent = "--°C";
+  document.getElementById('windDir').textContent = "--";
+  document.getElementById('weatherDesc').textContent = "---";
+  document.getElementById('weatherIcon').textContent = "❌";
+  // Теперь очищаются и нижние поля, чтобы не оставалось старых данных
+  document.getElementById('wind').textContent = "-- m/s";
+  document.getElementById('humidity').textContent = "--%";
+}
+
+    async function fetchWeatherData(lat, lon, displayName) {
+      errorBlock.style.display = "none";
+      try {
+        const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m`;
+        const weatherRes = await fetch(weatherUrl);
+        const weatherData = await weatherRes.json();
+
+        updateUI(displayName, weatherData.current);
+      } catch (err) {
+        console.error(err);
+        showError();
+      }
+    }
+
+    function updateUI(name, current) {
+      document.getElementById('cityName').textContent = name;
+      document.getElementById('temperature').textContent = `${Math.round(current.temperature_2m)}°C`;
+      document.getElementById('humidity').textContent = `${current.relative_humidity_2m}%`;
+      
+      const windMps = (current.wind_speed_10m / 3.6).toFixed(1);
+      document.getElementById('wind').textContent = `${windMps} m/s`;
+      document.getElementById('windDir').textContent = getWindDirectionText(current.wind_direction_10m);
+      
+      // Получаем код погоды
+      const code = current.weather_code;
+      const weatherInfo = weatherMapping[code] || { text: "Unknown", icon: "❓" };
+      
+      // Обновляем текст И иконку одновременно!
+      document.getElementById('weatherDesc').textContent = weatherInfo.text;
+      document.getElementById('weatherIcon').textContent = weatherInfo.icon;
+    }
+
+    
+    geoBtn.addEventListener('click', () => {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported.");
+        return;
+      }
+      document.getElementById('cityName').textContent = "Locating...";
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          fetchWeatherData(lat, lon, `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`);
+        },
+        (error) => {
+          alert("Location access denied.");
+          getWeather(cityInput.value);
+        }
+      );
+    });
+
+    searchBtn.addEventListener('click', () => getWeather(cityInput.value));
+    cityInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') getWeather(cityInput.value);
+    });
+
+    getWeather(cityInput.value);
+  </script>
+</body>
+</html>

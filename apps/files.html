@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Manager</title>
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box; 
+    }
+    body {
+      background: transparent;
+      color: #def;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      user-select: none;
+    }
+
+    .toolbar {
+      backdrop-filter: blur(3px) saturate(110%) !important;
+      -webkit-backdrop-filter: blur(3px) saturate(110%) !important;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    .path-input {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    button {
+        backdrop-filter: blur(3px) saturate(110%) !important;
+      -webkit-backdrop-filter: blur(3px) saturate(110%) !important;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .file-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 16px;
+    }
+
+    .item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 12px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .item .icon {
+      font-size: 42px;
+      margin-bottom: 6px;
+    }
+
+    .item .name {
+      font-size: 13px;
+      word-break: break-word;
+      line-height: 1.2;
+    }
+
+    /* Elegant Context Menu */
+    .context-menu {
+      position: absolute;
+      background: rgba(20, 20, 25, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      min-width: 140px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+      display: none;
+      z-index: 1000;
+      padding: 4px 0;
+    }
+
+    .context-menu-item {
+      padding: 10px 16px;
+      font-size: 14px;
+      color: #def;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      text-align: left;
+    }
+
+    .context-menu-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    /* Благородный приглушенный красный для удаления */
+    .context-menu-item.delete {
+      color: rgba(255, 120, 120, 0.9);
+    }
+    
+    .context-menu-item.delete:hover {
+      background: rgba(255, 80, 80, 0.15);
+      color: #ff9999;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="toolbar">
+    <button onclick="goBack()"><=</button>
+    <input type="text" id="pathDisplay" class="path-input" readonly value="/">
+    <button id="pasteBtn" style="display: none; color: #34c759; font-weight: bold;" onclick="pasteItem()">Paste</button>
+    <button onclick="createNewFolder()">+ 📁 Folder</button>
+    <button onclick="triggerImport()">+ 📥 Import</button>
+    <input type="file" id="fileImporter" style="display:none;" onchange="handleImport(event)">
+  </div>
+
+  <div class="file-grid" id="fileGrid"></div>
+
+  <div id="contextMenu" class="context-menu">
+    <div class="context-menu-item" onclick="triggerCut()">✂ | Cut</div>
+    <div class="context-menu-item" onclick="triggerRename()">✏ | Rename</div>
+    <div class="context-menu-item delete" onclick="triggerDelete()">🗑 | Delete</div>
+  </div>
+
+  <script>
+    const fs = window.parent.fs || window.fs; 
+    let currentPath = '/';
+    
+    let selectedItemPath = '';
+    let selectedItemIsDir = false;
+    const menu = document.getElementById('contextMenu');
+
+    async function updateGrid() {
+      document.getElementById('pathDisplay').value = currentPath;
+      const grid = document.getElementById('fileGrid');
+      grid.innerHTML = '';
+
+      if (!fs || !fs.promises) {
+        grid.innerHTML = '<div style="color:rgba(255,100,100,0.8); padding:10px;">Initializing File System...</div>';
+        return;
+      }
+
+      try {
+        const items = await fs.promises.readdir(currentPath);
+
+        for (let name of items) {
+          const itemPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
+          const stat = await fs.promises.stat(itemPath);
+          const isDirectory = stat.isDirectory();
+
+          const div = document.createElement('div');
+          div.className = 'item';
+          div.innerHTML = `
+            <div class="icon">${isDirectory ? '📁' : '📄'}</div>
+            <div class="name">${name}</div>
+          `;
+
+          // Click handler to navigate or open
+          div.onclick = () => {
+            if (isDirectory) {
+              currentPath = itemPath;
+              updateGrid();
+            } else {
+              openFile(itemPath);
+            }
+          };
+
+          // Long-press emulation variables for Android
+          let touchTimeout;
+          let isMoved = false;
+
+          div.addEventListener('touchstart', (e) => {
+            isMoved = false;
+            touchTimeout = setTimeout(() => {
+              if (!isMoved) {
+                e.preventDefault();
+                showMenu(e.touches[0].pageX, e.touches[0].pageY, itemPath, isDirectory);
+              }
+            }, 600); 
+          });
+
+          div.addEventListener('touchmove', () => {
+            isMoved = true;
+            clearTimeout(touchTimeout);
+          });
+
+          div.addEventListener('touchend', () => {
+            clearTimeout(touchTimeout);
+          });
+
+          // Mouse right-click support just in case
+          div.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            showMenu(e.pageX, e.pageY, itemPath, isDirectory);
+          });
+
+          grid.appendChild(div);
+        }
+      } catch (err) {
+        console.error("FS Error: ", err);
+      }
+    }
+
+    function showMenu(x, y, path, isDir) {
+      selectedItemPath = path;
+      selectedItemIsDir = isDir;
+      
+      menu.style.left = `${x}px`;
+      menu.style.top = `${y}px`;
+      menu.style.display = 'block';
+    }
+
+    document.addEventListener('click', () => {
+      menu.style.display = 'none';
+    });
+
+    async function createNewFolder() {
+      if (!fs) return;
+      const name = prompt("Enter folder name:");
+      if (!name) return;
+
+      const targetPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
+      try {
+        await fs.promises.mkdir(targetPath);
+        updateGrid();
+      } catch (err) {
+        alert("Failed to create folder: " + err);
+      }
+    }
+
+    function goBack() {
+      if (currentPath === '/') return;
+      const parts = currentPath.split('/');
+      parts.pop();
+      currentPath = parts.join('/') || '/';
+      updateGrid();
+    }
+
+    async function openFile(path) {
+      try {
+        const content = await fs.promises.readFile(path, 'utf8');
+        window.parent.postMessage({
+          type: 'open_file_in_editor',
+          data: { path, content }
+        }, '*');
+      } catch (err) {
+        alert("Failed to read file: " + err);
+      }
+    }
+
+    let cutItemPath = ''; // Хранит путь вырезанного элемента
+
+    // Функция активации режима переноса
+    function triggerCut() {
+      if (!selectedItemPath) return;
+      cutItemPath = selectedItemPath;
+      
+      // Показываем кнопку Paste в тулбаре
+      document.getElementById('pasteBtn').style.display = 'inline-block';
+      menu.style.display = 'none';
+    }
+
+    // Функция вставки элемента в текущую директорию
+    async function pasteItem() {
+      if (!fs || !cutItemPath) return;
+
+      const name = cutItemPath.split('/').pop();
+      const targetPath = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`;
+
+      // Защита от дурака 1: Нельзя вставить элемент туда же, где он уже находится
+      if (cutItemPath === targetPath) {
+        alert("Item is already here.");
+        return;
+      }
+
+      // Защита от дурака 2: Нельзя перенести папку внутрь самой себя или своих подпапок
+      if (currentPath.startsWith(cutItemPath + '/')) {
+        alert("Cannot move a folder into its own subfolder.");
+        return;
+      }
+
+      try {
+        // LightningFS переносит и файлы, и папки через rename
+        await fs.promises.rename(cutItemPath, targetPath);
+        
+        // Сбрасываем буфер обмена и скрываем кнопку
+        cutItemPath = '';
+        document.getElementById('pasteBtn').style.display = 'none';
+        
+        // Обновляем сетку файлов
+        updateGrid();
+      } catch (err) {
+        alert("Failed to move item: " + err);
+      }
+    }
+
+    // Context Menu Handlers
+    async function triggerRename() {
+      if (!fs || !selectedItemPath) return;
+
+      const oldName = selectedItemPath.split('/').pop();
+      const newName = prompt("Rename to:", oldName);
+      if (!newName || newName === oldName) return;
+
+      const pathParts = selectedItemPath.split('/');
+      pathParts.pop();
+      const basePath = pathParts.join('/') || '/';
+      const newPath = basePath === '/' ? `/${newName}` : `${basePath}/${newName}`;
+
+      try {
+        await fs.promises.rename(selectedItemPath, newPath);
+        updateGrid();
+      } catch (err) {
+        alert("Failed to rename: " + err);
+      }
+    }
+
+    async function triggerDelete() {
+      if (!fs || !selectedItemPath) return;
+
+      const filename = selectedItemPath.split('/').pop();
+      if (!confirm(`Delete "${filename}"?`)) return;
+
+      try {
+        if (selectedItemIsDir) {
+          await fs.promises.rmdir(selectedItemPath);
+        } else {
+          await fs.promises.unlink(selectedItemPath);
+        }
+        updateGrid();
+      } catch (err) {
+        alert("Failed to delete: " + err);
+      }
+    }
+
+    // Открывает диалоговое окно выбора файлов
+    function triggerImport() {
+      document.getElementById('fileImporter').click();
+    }
+
+    // Обрабатывает выбранные пользователем файлы
+    async function handleImport(event) {
+      if (!fs) return;
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+
+      for (let file of files) {
+        // Формируем путь для сохранения в текущей директории
+        const targetPath = currentPath === '/' ? `/${file.name}` : `${currentPath}/${file.name}`;
+        
+        try {
+          // Читаем файл как ArrayBuffer, чтобы поддерживать и текст, и бинарные файлы (картинки/звуки)
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = new Uint8Array(arrayBuffer);
+          
+          // Записываем файл в LightningFS
+          await fs.promises.writeFile(targetPath, buffer);
+        } catch (err) {
+          alert(`Failed to import "${file.name}": ` + err);
+        }
+      }
+
+      // Сбрасываем инпут, чтобы можно было повторно выбрать тот же файл
+      event.target.value = '';
+      
+      // Обновляем отображение файлов в текущей папке
+      updateGrid();
+    }
+
+    // Dynamic initial delay fallback loop
+    function startApp() {
+      if (window.parent.fs || window.fs) {
+        updateGrid();
+      } else {
+        setTimeout(startApp, 50);
+      }
+    }
+
+    startApp();
+  </script>
+</body>
+</html>

@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Camera</title>
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box; 
+    }
+    body {
+      background: rgba(10, 10, 10, 0.5);
+      color: #def;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Видоискатель (Прямой поток с камеры) */
+    .camera-container {
+      flex: 1;
+      position: relative;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(1); /* Будет меняться зеркально для фронталки */
+    }
+
+    video.mirror {
+      transform: scaleX(-1);
+    }
+
+    /* Панель управления снизу */
+    .controls {
+      height: 100px;
+      background: rgba(15, 15, 20, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 20px;
+    }
+
+    /* Кнопки переключения режимов */
+    .mode-select {
+      display: flex;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 4px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .mode-btn {
+      background: transparent;
+      border: none;
+      color: #8aa;
+      padding: 6px 14px;
+      font-size: 12px;
+      border-radius: 16px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    /* Главный затвор (Спуск) */
+    .shutter-btn {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #fff;
+      border: 4px solid rgba(0, 0, 0, 0.2);
+      box-shadow: 0 0 0 4px #fff;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .shutter-btn:active {
+      transform: scale(0.9);
+    }
+
+    .shutter-btn.recording {
+      background: rgba(255, 100, 100, 0.9);
+      box-shadow: 0 0 0 4px rgba(255, 100, 100, 0.4);
+      border-radius: 12px; /* Превращается в квадрат при записи видео */
+    }
+
+    /* Вспомогательные круглые кнопки (Смена камеры) */
+    .action-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #def;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Индикатор записи */
+    .recording-status {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(255, 80, 80, 0.8);
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      animation: blink 1s infinite alternate;
+    }
+
+    @keyframes blink {
+      from { opacity: 1; }
+      to { opacity: 0.4; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="camera-container">
+    <video id="viewfinder" autoplay playsinline muted></video>
+    <div id="recordingStatus" class="recording-status">🔴 REC <span id="timer">00:00</span></div>
+  </div>
+
+  <div class="controls">
+    <div class="mode-select">
+      <button class="mode-btn active" id="modePhoto" onclick="setMode('photo')">PHOTO</button>
+      <button class="mode-btn" id="modeVideo" onclick="setMode('video')">VIDEO</button>
+    </div>
+
+    <button class="shutter-btn" id="shutter" onclick="capture()"></button>
+
+    <button class="action-btn" onclick="switchCamera()">🔄</button>
+  </div>
+
+  <script>
+    const fs = window.parent.fs || window.fs;
+    const videoEl = document.getElementById('viewfinder');
+    const shutterBtn = document.getElementById('shutter');
+    const recStatus = document.getElementById('recordingStatus');
+    const timerEl = document.getElementById('timer');
+
+    let currentStream = null;
+    let currentMode = 'photo'; // photo или video
+    let useFrontCamera = false; // Переключатель фронтальная/задняя
+    
+    // Переменные для видеозаписи
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+    let secondsElapsed = 0;
+    let timerInterval = null;
+
+    // Запуск стрима с учётом выбранной камеры
+    async function initCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+
+      // Задаем правила выбора камеры для планшета Android
+      const constraints = {
+        video: {
+          facingMode: useFrontCamera ? "user" : "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: true // Нужно для записи видео
+      };
+
+      try {
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        videoEl.srcObject = currentStream;
+
+        // Зеркалим изображение, если это фронтальная камера
+        if (useFrontCamera) {
+          videoEl.classList.add('mirror');
+        } else {
+          videoEl.classList.remove('mirror');
+        }
+      } catch (err) {
+        console.error("Camera access denied: ", err);
+        alert("Camera access failed. Check permissions.");
+      }
+    }
+
+    // Переключение камер
+    function switchCamera() {
+      if (isRecording) return; // Запрещаем переключение во время съемки видео
+      useFrontCamera = !useFrontCamera;
+      initCamera();
+    }
+
+    // Переключение режимов интерфейса
+    function setMode(mode) {
+      if (isRecording) return;
+      currentMode = mode;
+      document.getElementById('modePhoto').classList.toggle('active', mode === 'photo');
+      document.getElementById('modeVideo').classList.toggle('active', mode === 'video');
+    }
+
+    // Главное действие кнопки затвора
+    function capture() {
+      if (currentMode === 'photo') {
+        takePhoto();
+      } else {
+        toggleVideoRecording();
+      }
+    }
+
+    // ЛОГИКА ФОТОСЪЁМКИ
+    async function takePhoto() {
+      if (!currentStream || !fs) return;
+
+      // Создаем виртуальный canvas для захвата кадра из потока видео
+      const canvas = document.createElement('canvas');
+      canvas.width = videoEl.videoWidth || 1280;
+      canvas.height = videoEl.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+
+      // Если камера фронтальная, зеркалим холст перед отрисовкой снимка
+      if (useFrontCamera) {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+
+      ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+      // Превращаем холст в Blob, а затем в массив байт для IndexedDB
+      canvas.toBlob(async (blob) => {
+        try {
+          const arrayBuffer = await blob.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          
+          // Генерируем уникальное имя файла по временной метке
+          const filename = `IMG_${Date.now()}.png`;
+          await fs.promises.writeFile(`/images/${filename}`, uint8Array);
+          
+          // Легкая вспышка видоискателя для обратной связи
+          videoEl.style.opacity = '0.3';
+          setTimeout(() => videoEl.style.opacity = '1', 150);
+        } catch (err) {
+          alert("Failed to save photo: " + err);
+        }
+      }, 'image/png');
+    }
+
+    // ЛОГИКА ЗАПИСИ ВИДЕО
+    async function toggleVideoRecording() {
+      if (!currentStream || !fs) return;
+
+      if (!isRecording) {
+        // СТАРТ ЗАПИСИ
+        recordedChunks = [];
+        
+        // Выбираем контейнер, поддерживаемый мобильным браузером (обычно video/webm)
+        let options = { mimeType: 'video/webm;codecs=vp9,opus' };
+        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+          options = { mimeType: 'video/webm' };
+        }
+
+        try {
+          mediaRecorder = new MediaRecorder(currentStream, options);
+        } catch (e) {
+          mediaRecorder = new MediaRecorder(currentStream); // Фоллбэк, если кодеки не подошли
+        }
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            recordedChunks.push(e.data);
+          }
+        };
+
+        // Когда запись полностью остановлена, сохраняем в FS
+        mediaRecorder.onstop = async () => {
+          const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'video/webm' });
+          try {
+            const arrayBuffer = await blob.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+            const filename = `VID_${Date.now()}.webm`;
+            
+            await fs.promises.writeFile(`/videos/${filename}`, uint8Array);
+          } catch (err) {
+            alert("Failed to store video: " + err);
+          }
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        shutterBtn.classList.add('recording');
+        recStatus.style.display = 'flex';
+        
+        // Запуск таймера хронометража
+        secondsElapsed = 0;
+        timerEl.textContent = "00:00";
+        timerInterval = setInterval(() => {
+          secondsElapsed++;
+          const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+          const secs = String(secondsElapsed % 60).padStart(2, '0');
+          timerEl.textContent = `${mins}:${secs}`;
+        }, 1000);
+
+      } else {
+        // ОСТАНОВКА ЗАПИСИ
+        mediaRecorder.stop();
+        isRecording = false;
+        shutterBtn.classList.remove('recording');
+        recStatus.style.display = 'none';
+        clearInterval(timerInterval);
+      }
+    }
+
+    // Цикл безопасного ожидания инициализации ядра ФС перед запуском стрима
+    function startApp() {
+      if (window.parent.fs || window.fs) {
+        // Убедимся, что папка для видео создана в IndexedDB
+        const activeFs = window.parent.fs || window.fs;
+        activeFs.promises.mkdir('/videos').catch(() => {});
+        initCamera();
+      } else {
+        setTimeout(startApp, 50);
+      }
+    }
+
+    startApp();
+  </script>
+</body>
+</html>
