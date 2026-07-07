@@ -24,6 +24,7 @@ color: red;
 
     body {
     overflow: auto;
+    overflow-x: hidden;
       background-image: url('https://upload.wikimedia.org/wikipedia/commons/9/95/Taiga_Lake_And_Forest_%2856969730%29.jpeg');
       background-size: cover;
       background-position: center;
@@ -75,6 +76,15 @@ color: red;
       opacity: 1;
       visibility: visible;
       transition: opacity 1s ease;
+    }
+
+    .showInfoBox {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+      text-shadow: 0 4px 15px rgba(255, 255, 255, 0.6);
     }
 
 #apps {
@@ -245,14 +255,17 @@ color: red;
 .appIcon {
   position: relative; /* Важно для дочернего меню */
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none; /* отключает системное меню при долгом тапе (iOS/некоторые WebView) */
+  touch-action: manipulation; /* браузер не пытается зумить/скроллить/распознавать другие жесты на долгом тапе */
 }
 
 /* Стили всплывающего меню */
 .app-tooltip {
-  position: absolute;
-  left: 65px; /* Сдвиг вправо от панели задач */
-  top: 50%;
-  transform: translateY(-50%);
+  position: fixed; /* fixed + top из JS (по иконке), left зафиксирован — не съезжает вправо и не создаёт горизонтальный скролл */
+  left: 70px; /* сразу за панелью #apps (60px + margin) */
+  top: 0;
+  transform: translateY(-50%) scale(0.95);
   padding: 6px 12px;
   display: flex;
   flex-direction: column;
@@ -265,9 +278,9 @@ color: red;
   white-space: nowrap;
 }
 
-/* Показываем при наведении на ПК */
-.appIcon:hover .app-tooltip,
-.appIcon.touch-active .app-tooltip {
+/* Показываем через явный класс (тултип живёт в body, а не внутри кнопки —
+   поэтому не полагаемся на CSS-селекторы потомков вроде .appIcon:hover .app-tooltip) */
+.app-tooltip.visible {
   opacity: 1;
   pointer-events: auto;
   transform: translateY(-50%) scale(1.02);
@@ -302,14 +315,15 @@ color: red;
   max-height: calc(100vh - 60px);
   border-radius: 30px;
   overflow-y: auto;
-  overflow-x: hidden;
 }
+.tooltip {  margin: 5px 65px; display: none; z-index: 99999999;  }
   </style>
 </head>
 <body>
   <div id="hiPan"><h1>Welcome to KittenOS!</h1><br><strong>Loading...</strong></div>
   
   <div id="KittenOS" style="display: block; visibility: hidden;">
+  <div id="toltc" style="margin: 5px 65px; z-index: 10000000;"></div>
     <panel id="apps">
       <div id="applications"></div>
       <button class="appIcon" onclick="openPan()" style="display: flex; position: fixed; bottom: 0px; left: 5px; align-items: center; justify-content: center;">
@@ -357,6 +371,7 @@ color: red;
       <panel>🔧Dev tools<input type="checkbox" id="dev-switch"></panel>
       <button onclick="installHtml()" style="color: #034;">⬇ App installer</button><br>
       <button onclick="location.reload()">↻ Reload system</button>
+<br>
   <small>v.1.0</small>
     </panel>
 <panel id="app-installer" style="display: none;">
@@ -507,22 +522,23 @@ try {
   openApp("cat-files")
 }
 
-function closeBox(){    document.querySelectorAll(".alert").forEach(el => el.remove());    }
+function closeBox(){    document.querySelectorAll(".showInfoBox").forEach(el => el.remove());    }
 
 function showInfoBox(text, timeoutMs = 5000) {
   const box = document.createElement("panel");
   box.innerHTML = `<h1>${text}</h1><button style="position: absolute; top: 5px; right: 5px; color: red;" onclick="closeBox()">X</button>`;
 
-  box.id = "hiPan";
-  box.className = "alert";
+  box.className = "showInfoBox";
   box.style.padding = "0px 30px";
 
   document.body.appendChild(box);
 }
 
-    function renderApps() {
+function renderApps() {
   const container = document.getElementById("applications");
   container.innerHTML = ""; 
+  // Тултипы теперь лежат в body отдельно от контейнера — чистим их тоже, иначе накопятся дубликаты
+  document.querySelectorAll('.app-tooltip').forEach(el => el.remove());
 
   applications.forEach((app) => {
     const btn = document.createElement("button");
@@ -533,7 +549,7 @@ function showInfoBox(text, timeoutMs = 5000) {
     // Клик открывает приложение
     btn.onclick = () => openApp(app.id);
 
-    // Создаем тултип
+    // Создаем тултип ПЕРСОНАЛЬНО для этой иконки
     const tooltip = document.createElement("panel");
     tooltip.className = "app-tooltip";
 
@@ -542,11 +558,11 @@ function showInfoBox(text, timeoutMs = 5000) {
     nameSpan.textContent = app.name;
     tooltip.appendChild(nameSpan);
 
-    // Проверяем на системные приложения (cat-s_maps и cat-s_pres)
-    const isSystemApp = (app.id === "cat-s_maps" || app.id === "cat-s_pres" || app.id === "cat-weather" || app.id === "cat-files" || app.id === "cat-camera" || app.id === "cat-gallery" || app.id === "cat-browser" || app.id === "cat-calculator" || app.id === "cat-list");
+    // Проверяем на системные приложения
+    const isSystemApp = ["cat-files", "cat-gallery", "cat-camera", "cat-browser", "cat-calculator", "cat-list", "cat-s_maps", "cat-weather"].includes(app.id);
 
     if (!isSystemApp) {
-      // БЕЗОПАСНОСТЬ: Кнопка Trust/Untrust строго НАД Delete
+      // Кнопка Trust/Untrust
       const trustBtn = document.createElement("button");
       trustBtn.className = "tooltip-del-btn";
       trustBtn.style.color = "deepskyblue"; 
@@ -556,11 +572,12 @@ function showInfoBox(text, timeoutMs = 5000) {
       trustBtn.textContent = isTrusted ? "🛡️ Untrust" : " Trust";
       
       trustBtn.onclick = (e) => {
-        e.stopPropagation(); // Чтобы при клике на кнопку само приложение не запускалось
+        e.stopPropagation();
         toggleAppTrust(app.id);
       };
       tooltip.appendChild(trustBtn);
 
+      // Кнопка Delete
       const delBtn = document.createElement("button");
       delBtn.className = "tooltip-del-btn";
       delBtn.textContent = "Delete";
@@ -568,38 +585,75 @@ function showInfoBox(text, timeoutMs = 5000) {
       tooltip.appendChild(delBtn);
     }
 
+    // ВАЖНО: тултип кладём в body, а НЕ внутрь кнопки.
+    // Кнопка получает transform: scale(0.99) в состоянии :active (пока палец удерживается —
+    // а это как раз всё время долгого нажатия), и transform на предке ломает position: fixed
+    // у потомка (превращает его в absolute относительно этого предка). Поэтому тултип
+    // должен физически лежать вне кнопки, а связь с иконкой держим через JS-класс btn.tooltip.
+    document.body.appendChild(tooltip);
+    btn.tooltip = tooltip;
 
-    btn.appendChild(tooltip);
-
-    // --- Обработка ТАЧ-событий для мобильных устройств ---
+    // --- Обработка ТАЧ-событий с задержкой 1.5 секунды ---
     let touchTimeout;
-    
+
+    // Блокируем системное контекстное меню при долгом тапе — иначе оно может
+    // перехватить жест раньше, чем сработает наш таймер
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+
     btn.addEventListener('touchstart', (e) => {
-      // Если нажали на кнопку удаления внутри тултипа, ничего не делаем
       if (e.target.classList.contains('tooltip-del-btn')) return;
 
-      // Запускаем таймер долгого нажатия (300мс) для показа меню
+      // Задержка 1500мс (1.5 секунды) для мобильного UI
       touchTimeout = setTimeout(() => {
-        // Убираем класс у других иконок
-        document.querySelectorAll('.appIcon').forEach(i => i.classList.remove('touch-active'));
+        // Сначала гасим другие активные тултипы
+        document.querySelectorAll('.appIcon.touch-active').forEach(el => {
+          if (el !== btn) {
+            el.classList.remove('touch-active');
+            if (el.tooltip) el.tooltip.classList.remove('visible');
+          }
+        });
+
+        // Позиционируем тултип по вертикали напротив нажатой иконки (left зафиксирован в CSS)
+        const rect = btn.getBoundingClientRect();
+        tooltip.style.top = (rect.top + rect.height / 2) + "px";
+
         btn.classList.add('touch-active');
-      }, 300);
-    }, { passive: true });
+        tooltip.classList.add('visible');
+      }, 1500);
+    });
 
     btn.addEventListener('touchend', () => {
       clearTimeout(touchTimeout);
     });
 
+    btn.addEventListener('touchcancel', () => {
+      clearTimeout(touchTimeout);
+    });
+
+    // Ховер для ПК (тултип теперь в body, поэтому не через CSS :hover, а явно)
+    btn.addEventListener('mouseenter', () => {
+      const rect = btn.getBoundingClientRect();
+      tooltip.style.top = (rect.top + rect.height / 2) + "px";
+      tooltip.classList.add('visible');
+    });
+    btn.addEventListener('mouseleave', () => {
+      tooltip.classList.remove('visible');
+    });
+
     container.appendChild(btn);
   });
 
-  // Закрытие тултипов при клике/таче в любое другое место экрана
+  // Закрытие тултипов при таче в любое другое место экрана
   document.addEventListener('touchstart', (e) => {
     if (!e.target.closest('.appIcon')) {
-      document.querySelectorAll('.appIcon').forEach(i => i.classList.remove('touch-active'));
+      document.querySelectorAll('.appIcon.touch-active').forEach(el => {
+        el.classList.remove('touch-active');
+        if (el.tooltip) el.tooltip.classList.remove('visible');
+      });
     }
   }, { passive: true });
 }
+
 // БЕЗОПАСНОСТЬ: Функция переключения уровня доверия приложения
 function toggleAppTrust(appId) {
   let whitelist = JSON.parse(localStorage.getItem('catos_trusted_apps') || '[]');
@@ -616,14 +670,14 @@ function toggleAppTrust(appId) {
       whitelist.push(appId);
       localStorage.setItem('catos_trusted_apps', JSON.stringify(whitelist));
       window.trustedAppsWhitelist = whitelist;
-      alert("Application trusted. Please open it to apply full filesystem access.");
+      showInfoBox("Application trusted. Please open it to apply full filesystem access.");
       renderApps();
     }
   } else {
     whitelist = whitelist.filter(id => id !== appId);
     localStorage.setItem('catos_trusted_apps', JSON.stringify(whitelist));
     window.trustedAppsWhitelist = whitelist;
-    alert("Trust revoked. Application is now securely sandboxed.");
+    showInfoBox("Trust revoked. Application is now securely sandboxed.");
     renderApps();
     
     // Если приложение открыто, грохаем его фрейм, чтобы принудительно вернуть в песочницу
