@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>LakeOS Touch Calculator</title>
+  <title>Touch Calculator</title>
   <style>
     * {
       box-sizing: border-box;
@@ -12,7 +12,7 @@
     }
 
     html, body {
-      overflow: hidden !important; /* перебивает "* {overflow:auto}" за счёт большей специфичности */
+      overflow: hidden !important; 
     }
 
     body {
@@ -27,7 +27,6 @@
       color: #003;
     }
 
-    /* Единая бесшовная стеклянная панель */
     .calculator {
       backdrop-filter: blur(6.7px) saturate(110%) !important;
       -webkit-backdrop-filter: blur(6.7px) saturate(110%) !important;
@@ -46,7 +45,6 @@
       overflow: hidden;
     }
 
-    /* Двухуровневый контейнер для экрана */
     .display-container {
       display: flex;
       flex-direction: column;
@@ -56,7 +54,6 @@
       overflow: auto;
     }
 
-    /* Строка истории (предыдущие числа) */
     .history {
       font-size: 1.1rem;
       color: rgba(0, 0, 51, 0.4); 
@@ -67,7 +64,6 @@
     }
     .history::-webkit-scrollbar { display: none; }
 
-    /* Главный экран калькулятора */
     .display {
       font-size: 3rem;
       line-height: 1.2;
@@ -83,7 +79,6 @@
     }
     .display::-webkit-scrollbar { display: none; }
 
-    /* Сетка сенсорных зон */
     .keys {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -91,7 +86,6 @@
       flex-grow: 1;
     }
 
-    /* Полностью плоские сенсорные кнопки */
     button {
       background: transparent;
       border: none;
@@ -122,7 +116,6 @@
       color: #ff3b30; 
     }
 
-    /* Кнопка РАВНО */
     .equal { 
       grid-column: span 2; 
       aspect-ratio: auto;
@@ -173,21 +166,18 @@
   </div>
 
   <script>
-    // Подгонка калькулятора под маленькие экраны через transform: scale
     const calculator = document.querySelector('.calculator');
 
     function fitCalculator() {
-      // сбрасываем масштаб, чтобы измерить "родной" размер
       calculator.style.transform = 'scale(1)';
 
-      const margin = 20; // небольшой отступ от краёв экрана
+      const margin = 20;
       const availableWidth = window.innerWidth - margin;
       const availableHeight = window.innerHeight - margin;
 
       const scaleX = availableWidth / calculator.offsetWidth;
       const scaleY = availableHeight / calculator.offsetHeight;
 
-      // никогда не увеличиваем больше 1 — только уменьшаем на маленьких экранах
       const scale = Math.min(1, scaleX, scaleY);
 
       calculator.style.transform = `scale(${scale})`;
@@ -202,18 +192,13 @@
     let currentVal = '0';
     let lastEquation = '';
 
-    // Умная функция красивого форматирования чисел с пробелами
     function formatVisualString(str) {
-      // 1. Заменяем технические знаки умножения/деления на красивые
       let visual = str.replace(/\*/g, '×').replace(/\//g, '÷');
       
-      // 2. Находим в строке блоки цифр и форматируем их по 3 разряда (но не трогаем дробную часть после точки)
       return visual.replace(/\d+/g, (match, offset, fullStr) => {
-        // Если перед этой группой цифр стоит точка, значит это дробная часть — её не разделяем пробелами
         if (offset > 0 && fullStr[offset - 1] === '.') {
           return match;
         }
-        // Форматируем целое число пробелами
         return match.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
       });
     }
