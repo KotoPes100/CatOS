@@ -1257,7 +1257,7 @@ requestAnimationFrame(() => {
 //Wallpaper//
 
 async function saveCustomBg(base64Data) {
-  const db = await openDB(); // Используем единую функцию openDB
+  const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction("wallpapers", "readwrite");
     tx.objectStore("wallpapers").put(base64Data, "current");
@@ -1267,7 +1267,7 @@ async function saveCustomBg(base64Data) {
 }
 
 async function loadCustomBg() {
-  const db = await openDB(); // Используем единую функцию openDB
+  const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction("wallpapers", "readonly");
     const req = tx.objectStore("wallpapers").get("current");
